@@ -254,32 +254,19 @@ the invariant is violated, and returns the date if valid.
 
 exception Invalid_date of string ;;
 
-let validated_date ({year = y; month = m; day = d} : date ) : date = 
-  if y < 1 then raise (Invalid_date "Invalid year")
-  else if m > 12 || m < 1 then raise (Invalid_date "Invalid month")
-  else if d < 0 then raise (Invalid_date "Invalid date")
-  else match m with
-  | 1 
-  | 3
-  | 5
-  | 7 
-  | 8
-  | 10
-  | 12 -> 
-    if d < 32 then {year = y; month = m; day = d} 
-    else raise (Invalid_date "Invalid day")
-  | 4
-  | 6
-  | 9
-  | 11 ->
-    if d < 31 then {year = y; month = m; day = d} 
-    else raise (Invalid_date "Invalid day")
-  | 2 -> 
-    if y mod 4 != 0 && d > 28 then raise (Invalid_date "Invalid day")
-    else if y mod 100 != 0 && d > 29 then raise (Invalid_date "Invalid day")
-    else if y mod 400 != 0 && d > 28 then raise (Invalid_date "Invalid day")
-    else if d > 28 then raise (Invalid_date "Invalid day")
-    else {year = y; month = m; day = d} ;;
+let validated_date ({year; month; day} as date) : date =
+  if year < 0 then raise (Invalid_date "negative year")
+  else let leap = (year mod 4 = 0 && year mod 100 <> 0)
+        || year mod 400 = 0 in 
+  let max_days = 
+    match month with
+    | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> 31
+    | 4 | 6 | 9 | 11 -> 30| 2 -> 
+  if leap then 29 else 28
+  | _ -> raise (Invalid_date "bad month") in
+  if day > max_days then raise (Invalid_date "day too large")
+  else if day < 1 then raise (Invalid_date "day too small")
+  else date ;;
 
 (*======================================================================
 Part 3: Family trees as an algebraic data type
@@ -371,7 +358,7 @@ Exercise 13: Complete the function below that counts the number of
 people in a given family. Be sure you count all spouses and children.
 ......................................................................*)
 
-let rec count_people (fam : family) : int = 
+let rec count_people (fam: family) : int =
   match fam with
-  | Single _ -> 1 
-  | Family (_, _, children) -> 2 + List.length children;;
+  | Single _ -> 1
+  | Family (_, _, c) -> 2 + List.fold_left (+) 0 (List.map count_people c) ;;
